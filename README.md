@@ -34,6 +34,12 @@ Grab the latest APK from the [Releases page](https://github.com/TonmoyBishwas/fo
 
 The APK will be at `app/build/outputs/apk/debug/`.
 
+## Documentation
+
+- [Architecture & codebase guide](docs/ARCHITECTURE.md)
+- [Pitfalls & contribution rules](docs/PITFALLS.md)
+- [Play Store launch roadmap](docs/PLAY-STORE.md)
+
 ## License
 
 Licensed under the [GNU General Public License v3.0](LICENSE).
