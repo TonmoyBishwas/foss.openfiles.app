@@ -35,16 +35,21 @@ object Thumbs {
         val key = "$path@$sizePx"
         view.tag = key
         cache.get(key)?.let {
+            view.imageTintList = null
             view.setImageBitmap(it)
             return
         }
         executor.execute {
             val file = File(path)
-            val stamp = file.lastModified()
             val bmp = runCatching { decode(view.context, file, kind, sizePx) }.getOrNull()
             if (bmp != null) {
                 cache.put(key, bmp)
-                main.post { if (view.tag == key) view.setImageBitmap(bmp) }
+                main.post {
+                    if (view.tag == key) {
+                        view.imageTintList = null
+                        view.setImageBitmap(bmp)
+                    }
+                }
             }
         }
     }

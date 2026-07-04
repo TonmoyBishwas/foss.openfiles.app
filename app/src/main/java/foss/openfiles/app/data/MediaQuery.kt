@@ -4,10 +4,17 @@ import android.content.Context
 import android.provider.MediaStore
 import java.io.File
 
-/** Category listings backed by MediaStore, with a filesystem fallback. */
+/** Category listings backed by MediaStore, with selection-based queries for speed. */
 object MediaQuery {
 
     enum class Category { IMAGES, VIDEOS, AUDIO, DOCUMENTS, DOWNLOADS, APK }
+
+    private val DOC_EXTS = listOf(
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "odp",
+        "csv", "md", "html", "htm", "xml", "json", "epub", "hwp", "log"
+    )
+    private val APK_EXTS = listOf("apk", "apks", "xapk")
+    private val ZIP_EXTS = listOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "z")
 
     fun query(context: Context, category: Category, showHidden: Boolean): List<FileItem> =
         when (category) {
@@ -20,20 +27,25 @@ object MediaQuery {
             Category.AUDIO -> mediaStore(
                 context, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null, null
             )
-            Category.DOCUMENTS -> filesByKind(context, FileKind.DOCUMENT)
-            Category.APK -> filesByExtension(context, listOf("apk", "apks", "xapk"))
+            Category.DOCUMENTS -> filesByExtension(context, DOC_EXTS)
+            Category.APK -> filesByExtension(context, APK_EXTS)
             Category.DOWNLOADS -> downloads(context, showHidden)
         }
 
-    /** Total bytes per category for the Manage storage screen. */
-    fun categorySize(context: Context, category: Category): Long =
-        query(context, category, showHidden = false).sumOf { it.size }
+    private fun extensionSelection(exts: List<String>): Pair<String, Array<String>> {
+        val clause = exts.joinToString(" OR ") {
+            "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?"
+        }
+        return clause to exts.map { "%.$it" }.toTypedArray()
+    }
 
     private fun mediaStore(
         context: Context,
         uri: android.net.Uri,
         selection: String?,
-        args: Array<String>?
+        args: Array<String>?,
+        sortOrder: String? = null,
+        limit: Int = Int.MAX_VALUE
     ): List<FileItem> {
         val projection = arrayOf(
             MediaStore.MediaColumns.DATA,
@@ -42,11 +54,11 @@ object MediaQuery {
         )
         val out = mutableListOf<FileItem>()
         runCatching {
-            context.contentResolver.query(uri, projection, selection, args, null)?.use { c ->
+            context.contentResolver.query(uri, projection, selection, args, sortOrder)?.use { c ->
                 val dataCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
                 val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                 val dateCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
-                while (c.moveToNext()) {
+                while (c.moveToNext() && out.size < limit) {
                     val path = c.getString(dataCol) ?: continue
                     val f = File(path)
                     if (!f.exists()) continue
@@ -63,16 +75,10 @@ object MediaQuery {
         return out
     }
 
-    private fun filesByKind(context: Context, kind: FileKind): List<FileItem> {
-        val uri = MediaStore.Files.getContentUri("external")
-        return mediaStore(context, uri, null, null).filter {
-            FileKind.ofExtension(it.extension) == kind
-        }
-    }
-
     private fun filesByExtension(context: Context, exts: List<String>): List<FileItem> {
         val uri = MediaStore.Files.getContentUri("external")
-        return mediaStore(context, uri, null, null).filter { it.extension in exts }
+        val (selection, args) = extensionSelection(exts)
+        return mediaStore(context, uri, selection, args)
     }
 
     private fun downloads(context: Context, showHidden: Boolean): List<FileItem> {
@@ -85,12 +91,83 @@ object MediaQuery {
     /** Most recently modified media/doc files for the home carousel. */
     fun recents(context: Context, limit: Int): List<FileItem> {
         val uri = MediaStore.Files.getContentUri("external")
-        val all = mediaStore(context, uri, null, null)
-        return all.asSequence()
-            .filter { FileKind.ofExtension(it.extension) != FileKind.OTHER }
-            .sortedByDescending { it.lastModified }
-            .take(limit)
-            .toList()
+        // Newest first; stop reading once we have enough interesting rows.
+        val items = mutableListOf<FileItem>()
+        val projection = arrayOf(
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED
+        )
+        runCatching {
+            context.contentResolver.query(
+                uri, projection, null, null,
+                "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+            )?.use { c ->
+                val dataCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                val dateCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                while (c.moveToNext() && items.size < limit) {
+                    val path = c.getString(dataCol) ?: continue
+                    if (FileKind.ofExtension(path.substringAfterLast('.', "")) == FileKind.OTHER) {
+                        continue
+                    }
+                    val f = File(path)
+                    if (!f.isFile) continue
+                    items += FileItem(
+                        path = path,
+                        name = f.name,
+                        isDirectory = false,
+                        size = c.getLong(sizeCol),
+                        lastModified = c.getLong(dateCol) * 1000
+                    )
+                }
+            }
+        }
+        return items
+    }
+
+    data class CategoryUsage(
+        val images: Long = 0,
+        val videos: Long = 0,
+        val audio: Long = 0,
+        val documents: Long = 0,
+        val apk: Long = 0,
+        val compressed: Long = 0
+    )
+
+    /**
+     * Total bytes per category in ONE pass over the MediaStore Files table —
+     * used by the Manage storage screen.
+     */
+    fun categorySizes(context: Context): CategoryUsage {
+        var images = 0L; var videos = 0L; var audio = 0L
+        var documents = 0L; var apk = 0L; var compressed = 0L
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.SIZE
+        )
+        runCatching {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
+                val nameCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                while (c.moveToNext()) {
+                    val name = c.getString(nameCol) ?: continue
+                    val size = c.getLong(sizeCol)
+                    if (size <= 0) continue
+                    when (FileKind.ofExtension(name.substringAfterLast('.', ""))) {
+                        FileKind.IMAGE -> images += size
+                        FileKind.VIDEO -> videos += size
+                        FileKind.AUDIO -> audio += size
+                        FileKind.DOCUMENT -> documents += size
+                        FileKind.APK -> apk += size
+                        FileKind.COMPRESSED -> compressed += size
+                        else -> Unit
+                    }
+                }
+            }
+        }
+        return CategoryUsage(images, videos, audio, documents, apk, compressed)
     }
 
     /** Recursive filesystem search across a volume. */

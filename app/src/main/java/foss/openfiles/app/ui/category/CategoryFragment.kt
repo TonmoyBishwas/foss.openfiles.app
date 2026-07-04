@@ -191,7 +191,16 @@ class CategoryFragment : Fragment(), FileAdapter.Listener {
 
     // List item interactions (non-grid categories)
     override fun onItemClick(item: FileItem) {
-        Open.file(requireActivity(), item.file)
+        if (item.isDirectory) {
+            (activity as MainActivity).push(
+                foss.openfiles.app.ui.browser.BrowserFragment.newInstance(
+                    android.os.Environment.getExternalStorageDirectory().absolutePath,
+                    item.path
+                )
+            )
+        } else {
+            Open.file(requireActivity(), item.file)
+        }
     }
 
     override fun onItemLongClick(item: FileItem) = Unit

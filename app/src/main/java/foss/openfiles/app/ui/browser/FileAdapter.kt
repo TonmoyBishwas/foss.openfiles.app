@@ -124,10 +124,16 @@ class FileAdapter(
         holder.icon.scaleType = ImageView.ScaleType.FIT_CENTER
         holder.icon.background = null
         holder.icon.clipToOutline = false
+        holder.icon.clearColorFilter()
+
+        fun tint(color: Int?) {
+            holder.icon.imageTintList =
+                color?.let { android.content.res.ColorStateList.valueOf(it) }
+        }
 
         if (item.isDirectory) {
             holder.icon.setImageResource(R.drawable.ic_folder)
-            holder.icon.setColorFilter(ThemeManager.folder(ctx))
+            tint(ThemeManager.folder(ctx))
             badgeFor(item.name)?.let {
                 holder.badge.visibility = View.VISIBLE
                 holder.badge.setImageResource(it)
@@ -141,34 +147,37 @@ class FileAdapter(
 
         when (kind) {
             FileKind.IMAGE, FileKind.VIDEO -> {
-                holder.icon.setImageResource(R.drawable.ic_file_generic)
-                holder.icon.setColorFilter(0xFF6E7378.toInt())
-                holder.icon.clearColorFilter()
+                tint(null)
+                holder.icon.setImageDrawable(null)
                 holder.icon.scaleType = ImageView.ScaleType.CENTER_CROP
                 holder.icon.background = ContextCompat.getDrawable(ctx, R.drawable.bg_thumb)
                 holder.icon.clipToOutline = true
                 Thumbs.load(holder.icon, item.path, kind, 96)
             }
             FileKind.AUDIO -> {
-                holder.icon.clearColorFilter()
+                tint(null)
+                holder.icon.scaleType = ImageView.ScaleType.CENTER_CROP
                 holder.icon.background = ContextCompat.getDrawable(ctx, R.drawable.bg_thumb)
                 holder.icon.clipToOutline = true
                 holder.icon.setImageResource(R.drawable.ic_audio_tile)
                 Thumbs.load(holder.icon, item.path, kind, 96)
             }
             FileKind.APK -> {
-                holder.icon.clearColorFilter()
-                Thumbs.load(holder.icon, item.path, kind, 96)
+                tint(null)
                 holder.icon.setImageResource(R.drawable.ic_file_generic)
-                holder.icon.setColorFilter(0xFF6E7378.toInt())
+                holder.icon.imageTintList =
+                    android.content.res.ColorStateList.valueOf(0xFF6E7378.toInt())
                 Thumbs.cached(item.path, 96)?.let {
-                    holder.icon.clearColorFilter()
+                    tint(null)
                     holder.icon.setImageBitmap(it)
+                } ?: run {
+                    tint(null)
+                    Thumbs.load(holder.icon, item.path, kind, 96)
                 }
             }
             else -> {
                 holder.icon.setImageResource(iconFor(kind, item.extension))
-                holder.icon.setColorFilter(colorFor(ctx, kind))
+                tint(colorFor(ctx, kind))
             }
         }
     }

@@ -68,10 +68,21 @@ class HomeFragment : Fragment() {
         executor.execute {
             val ctx = context ?: return@execute
             val recents = MediaQuery.recents(ctx, 12)
+            val dayAgo = System.currentTimeMillis() - 24L * 60 * 60 * 1000
+            val newCount = recents.count { it.lastModified >= dayAgo }
             list.post {
                 if (!isAdded) return@post
-                root.findViewById<TextView>(R.id.recentTitle).text =
-                    getString(R.string.recent_files)
+                val title = root.findViewById<TextView>(R.id.recentTitle)
+                val dot = root.findViewById<View>(R.id.newDot)
+                if (newCount > 0) {
+                    title.text = resources.getQuantityString(
+                        R.plurals.new_files_added, newCount, newCount
+                    )
+                    dot.visibility = View.VISIBLE
+                } else {
+                    title.text = getString(R.string.recent_files)
+                    dot.visibility = View.GONE
+                }
                 list.adapter = RecentAdapter(recents) { item ->
                     foss.openfiles.app.util.Open.file(requireActivity(), item.file)
                 }
@@ -117,6 +128,9 @@ class HomeFragment : Fragment() {
             }
             val lp = GridLayout.LayoutParams().apply {
                 width = 0
+                // Fixed height keeps all six cells identical even when a label
+                // ("Installation files") wraps to two lines.
+                height = (96 * density).toInt()
                 columnSpec = GridLayout.spec(i % 3, 1f)
                 rowSpec = GridLayout.spec(i / 3)
                 setMargins(
@@ -150,12 +164,43 @@ class HomeFragment : Fragment() {
                     else -> R.string.sd_card
                 }
             )
-            row.findViewById<TextView>(R.id.pill).apply {
+            row.findViewById<android.widget.FrameLayout>(R.id.pillBox).apply {
                 visibility = View.VISIBLE
+                removeAllViews()
+                val density = resources.displayMetrics.density
+                fun dp(v: Int) = (v * density).toInt()
+
                 val used = Format.sizeShort(volume.usedBytes)
                 val total = Format.sizeShort(volume.totalBytes).replace(".0", "")
-                text = "$used / $total"
-                background.setTint(ThemeManager.accentStrong(ctx))
+                val span = android.text.SpannableString("$used / $total").apply {
+                    setSpan(
+                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                        0, used.length + 2,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    setSpan(
+                        android.text.style.ForegroundColorSpan(0xCCFFFFFF.toInt()),
+                        used.length + 2, length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                addView(TextView(ctx).apply {
+                    text = span
+                    textSize = 13f
+                    maxLines = 1
+                    setTextColor(0xFFFFFFFF.toInt())
+                    setPadding(dp(13), dp(5), dp(13), dp(5))
+                    background = foss.openfiles.app.ui.widget.PillProgressDrawable(
+                        trackColor = 0xFF3F4247.toInt(),
+                        fillColor = ThemeManager.accentStrong(ctx),
+                        fraction = if (volume.totalBytes > 0)
+                            volume.usedBytes.toFloat() / volume.totalBytes else 0f
+                    )
+                }, android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                    android.view.Gravity.CENTER
+                ))
             }
             row.setOnClickListener {
                 (activity as MainActivity).push(BrowserFragment.newInstance(volume.root.absolutePath))

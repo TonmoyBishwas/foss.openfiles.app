@@ -77,24 +77,25 @@ class ManageStorageFragment : Fragment() {
             setTextColor(ContextCompat.getColor(ctx, R.color.of_text_secondary))
         })
 
-        // "92% used   118.4 GB / 128 GB"
+        // "61% used   79.15 GB / 128 GB"
         val usageRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM
-            setPadding(0, dp(10), 0, 0)
+            setPadding(0, dp(8), 0, 0)
         }
         percentLabel = TextView(ctx).apply {
-            textSize = 44f
+            textSize = 38f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
         }
         usageRow.addView(percentLabel)
         usageLabel = TextView(ctx).apply {
-            textSize = 17f
+            textSize = 15f
+            maxLines = 1
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
             gravity = Gravity.END or Gravity.BOTTOM
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(7))
         }
         usageRow.addView(usageLabel, LinearLayout.LayoutParams(
             0, ViewGroup.LayoutParams.MATCH_PARENT, 1f
@@ -126,7 +127,7 @@ class ManageStorageFragment : Fragment() {
         root.addView(ScrollView(ctx).apply {
             isVerticalScrollBarEnabled = false
             addView(content)
-        })
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         load()
         return root
@@ -141,27 +142,41 @@ class ManageStorageFragment : Fragment() {
             val used = realTotal - free
             val marketingTotal = volume.totalBytes
 
-            val values = listOf(
-                MediaQuery.categorySize(ctx, MediaQuery.Category.IMAGES),
-                MediaQuery.categorySize(ctx, MediaQuery.Category.VIDEOS),
-                MediaQuery.categorySize(ctx, MediaQuery.Category.AUDIO),
-                MediaQuery.categorySize(ctx, MediaQuery.Category.DOCUMENTS),
-                MediaQuery.categorySize(ctx, MediaQuery.Category.APK),
-                0L, // compressed placeholder, computed below
-                0L, // other, computed below
-                Trash.totalSize(ctx)
-            ).toMutableList()
+            // Header renders immediately; category sums fill in when the
+            // single-pass MediaStore aggregation finishes.
+            view?.post {
+                if (!isAdded) return@post
+                val pct = if (marketingTotal > 0) (used * 100 / marketingTotal).toInt() else 0
+                val percentText = android.text.SpannableString(
+                    getString(R.string.percent_used, pct)
+                ).apply {
+                    val split = indexOf(' ')
+                    if (split > 0) {
+                        setSpan(
+                            android.text.style.RelativeSizeSpan(0.45f),
+                            split, length,
+                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                }
+                percentLabel.text = percentText
+                usageLabel.text =
+                    "${Format.sizeShort(used)} / ${Format.sizeShort(marketingTotal).replace(".0", "")}"
+            }
 
-            val known = values.sum()
-            values[6] = (used - known).coerceAtLeast(0)
+            val usage = MediaQuery.categorySizes(ctx)
+            val trashBytes = Trash.totalSize(ctx)
+            val known = usage.images + usage.videos + usage.audio + usage.documents +
+                usage.apk + usage.compressed + trashBytes
+            val other = (used - known).coerceAtLeast(0)
+            val values = listOf(
+                usage.images, usage.videos, usage.audio, usage.documents,
+                usage.apk, usage.compressed, other, trashBytes
+            )
 
             view?.post {
                 if (!isAdded) return@post
                 for ((i, seg) in segments.withIndex()) seg.bytes = values[i]
-                val pct = if (marketingTotal > 0) (used * 100 / marketingTotal).toInt() else 0
-                percentLabel.text = getString(R.string.percent_used, pct)
-                usageLabel.text =
-                    "${Format.sizeShort(used)} / ${Format.sizeShort(marketingTotal).replace(".0", "")}"
                 barView.set(segments.map {
                     ContextCompat.getColor(requireContext(), it.colorRes) to it.bytes
                 }, marketingTotal)

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="new_files_added">
+        <item quantity="one">1 new file added recently</item>
+        <item quantity="other">%d new files added recently</item>
+    </plurals>
+</resources>
