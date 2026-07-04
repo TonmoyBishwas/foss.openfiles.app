@@ -286,11 +286,7 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
             getString(R.string.n_selected, count)
         val allCheck = view?.findViewById<ImageView>(R.id.selectAllCheck) ?: return
         val all = count == items.size && count > 0
-        allCheck.setImageResource(
-            if (all) R.drawable.ic_check_circle_on else R.drawable.ic_check_circle_off
-        )
-        if (all) allCheck.setColorFilter(ThemeManager.accentStrong(requireContext()))
-        else allCheck.clearColorFilter()
+        FileAdapter.bindCheckCircle(allCheck, all)
     }
 
     private fun selectedFiles(): List<File> = adapter.selected.map { File(it) }

@@ -80,12 +80,7 @@ class FileAdapter(
 
         holder.checkbox.visibility = if (selectionMode) View.VISIBLE else View.GONE
         if (selectionMode) {
-            val isSel = item.path in selected
-            holder.checkbox.setImageResource(
-                if (isSel) R.drawable.ic_check_circle_on else R.drawable.ic_check_circle_off
-            )
-            if (isSel) holder.checkbox.setColorFilter(ThemeManager.accentStrong(ctx))
-            else holder.checkbox.clearColorFilter()
+            bindCheckCircle(holder.checkbox, item.path in selected)
         }
 
         holder.itemView.setOnClickListener {
@@ -100,6 +95,26 @@ class FileAdapter(
         val custom = subtitleProvider?.invoke(item)
         if (custom != null) {
             holder.date.text = custom
+        }
+    }
+
+    companion object {
+        /** Blue filled circle + white check when selected; gray outline otherwise. */
+        fun bindCheckCircle(view: ImageView, isSelected: Boolean) {
+            val ctx = view.context
+            val pad = (4 * ctx.resources.displayMetrics.density).toInt()
+            if (isSelected) {
+                view.setBackgroundResource(R.drawable.bg_check_circle)
+                view.background.setTint(ThemeManager.accentStrong(ctx))
+                view.setImageResource(R.drawable.ic_check)
+                view.setColorFilter(0xFFFFFFFF.toInt())
+                view.setPadding(pad, pad, pad, pad)
+            } else {
+                view.background = null
+                view.setImageResource(R.drawable.ic_check_circle_off)
+                view.clearColorFilter()
+                view.setPadding(0, 0, 0, 0)
+            }
         }
     }
 
