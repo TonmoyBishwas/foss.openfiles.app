@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- One UI style dark palette (default) -->
+    <color name="of_background">#000000</color>
+    <color name="of_surface">#171719</color>
+    <color name="of_surface_variant">#252528</color>
+    <color name="of_popup">#2E3033</color>
+    <color name="of_text_primary">#FAFAFA</color>
+    <color name="of_text_secondary">#8F9296</color>
+    <color name="of_divider">#33FFFFFF</color>
+
+    <!-- Accent (default "blue" palette) -->
+    <color name="of_accent">#95AFD4</color>
+    <color name="of_accent_strong">#4C86C8</color>
+    <color name="of_folder">#8FA8C7</color>
+    <color name="of_pill">#7E9DC4</color>
+
+    <!-- Category icon colors -->
+    <color name="cat_images">#F26D77</color>
+    <color name="cat_videos">#A85CE0</color>
+    <color name="cat_audio">#6B6BE8</color>
+    <color name="cat_documents">#E8A44C</color>
+    <color name="cat_downloads">#3FBFAE</color>
+    <color name="cat_apk">#8FCE3C</color>
+
+    <!-- Storage bar segment colors -->
+    <color name="seg_images">#D8607A</color>
+    <color name="seg_videos">#8E4FD1</color>
+    <color name="seg_audio">#5C6BD1</color>
+    <color name="seg_documents">#C9A23C</color>
+    <color name="seg_apk">#9BC93C</color>
+    <color name="seg_compressed">#3CB954</color>
+    <color name="seg_apps">#38B5C9</color>
+    <color name="seg_system">#6A6F9E</color>
+    <color name="seg_other">#4C86C8</color>
+    <color name="seg_bin">#8E9296</color>
+    <color name="seg_free">#5A5D61</color>
+</resources>

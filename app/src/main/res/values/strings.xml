@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenFiles</string>
+
+    <!-- Home -->
+    <string name="recent_files">Recent files</string>
+    <string name="categories">Categories</string>
+    <string name="storage">Storage</string>
+    <string name="utilities">Utilities</string>
+    <string name="internal_storage">Internal storage</string>
+    <string name="sd_card">SD card</string>
+    <string name="usb_storage">USB storage</string>
+    <string name="recycle_bin">Recycle bin</string>
+    <string name="manage_storage">Manage storage</string>
+    <string name="cat_images">Images</string>
+    <string name="cat_videos">Videos</string>
+    <string name="cat_audio">Audio files</string>
+    <string name="cat_documents">Documents</string>
+    <string name="cat_downloads">Downloads</string>
+    <string name="cat_apk">Installation files</string>
+
+    <!-- Browser -->
+    <string name="search">Search</string>
+    <string name="select">Select</string>
+    <string name="view">View</string>
+    <string name="create_folder">Create folder</string>
+    <string name="settings">Settings</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_type">Type</string>
+    <string name="sort_size">Size</string>
+    <string name="view_list">List</string>
+    <string name="view_detailed_list">Detailed list</string>
+    <string name="view_grid">Grid</string>
+    <string name="filter_all">All</string>
+    <string name="filter_essentials">Essentials</string>
+    <string name="items_count">%d items</string>
+    <string name="item_count_one">1 item</string>
+    <string name="no_items">0 items</string>
+    <string name="empty_folder">No files</string>
+
+    <!-- Selection / operations -->
+    <string name="n_selected">%d selected</string>
+    <string name="all">All</string>
+    <string name="cancel">Cancel</string>
+    <string name="move">Move</string>
+    <string name="copy">Copy</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="more">More</string>
+    <string name="copy_to_clipboard">Copy to clipboard</string>
+    <string name="details">Details</string>
+    <string name="rename">Rename</string>
+    <string name="compress">Compress</string>
+    <string name="extract">Extract</string>
+    <string name="open_with">Open with</string>
+    <string name="select_folder">Select folder</string>
+    <string name="move_here">Move here</string>
+    <string name="copy_here">Copy here</string>
+    <string name="create">Create</string>
+    <string name="ok">OK</string>
+    <string name="folder_hint">Folder 1</string>
+    <string name="empty_dest_hint">You can create a new folder or place files here.</string>
+    <string name="size">Size</string>
+    <string name="last_modified">Last modified</string>
+    <string name="contains">Contains</string>
+    <string name="path">Path</string>
+    <string name="move_to_bin_question_one">Move 1 file to the Recycle bin?</string>
+    <string name="move_to_bin_question">Move %d items to the Recycle bin?</string>
+    <string name="move_to_recycle_bin">Move to Recycle bin</string>
+    <string name="delete_permanently_question_one">Delete 1 item permanently?</string>
+    <string name="delete_permanently_question">Delete %d items permanently?</string>
+    <string name="restore">Restore</string>
+    <string name="empty_bin">Empty</string>
+    <string name="bin_notice">This Recycle bin shows items deleted from OpenFiles. These items will be permanently deleted after 30 days.</string>
+    <string name="days_until_deletion">%d days until deletion</string>
+
+    <!-- Search -->
+    <string name="filters">Filters</string>
+    <string name="search_inside_files">Search inside files</string>
+    <string name="time">Time</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="time_7_days">Past 7 days</string>
+    <string name="time_30_days">Past 30 days</string>
+    <string name="type">Type</string>
+    <string name="type_image">Image</string>
+    <string name="type_video">Video</string>
+    <string name="type_audio">Audio</string>
+    <string name="type_document">Document</string>
+    <string name="type_apk">Installation file</string>
+    <string name="type_compressed">Compressed</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="clear_all">Clear all</string>
+    <string name="search_settings">Search settings</string>
+    <string name="show_recent_searches">Show recent searches</string>
+    <string name="no_results">No results found</string>
+
+    <!-- Manage storage -->
+    <string name="percent_used">%d%% used</string>
+    <string name="show_more">Show more</string>
+    <string name="show_less">Show less</string>
+    <string name="seg_apps">Apps</string>
+    <string name="seg_system">System</string>
+    <string name="seg_other">Other files</string>
+    <string name="seg_compressed">Compressed files</string>
+    <string name="large_files">Large files</string>
+    <string name="large_files_desc">Files bigger than 25MB</string>
+
+    <!-- Settings -->
+    <string name="of_settings">OpenFiles settings</string>
+    <string name="file_management">File management</string>
+    <string name="show_hidden">Show hidden system files</string>
+    <string name="trash_setting">Move deleted files to Recycle bin</string>
+    <string name="appearance">Appearance</string>
+    <string name="colour_palette">Colour palette</string>
+    <string name="colour_palette_desc">Choose an accent palette for the app.</string>
+    <string name="privacy">Privacy</string>
+    <string name="permissions">Permissions</string>
+    <string name="about">About OpenFiles</string>
+    <string name="version">Version %s</string>
+    <string name="open_source_licenses">Open-source project on GitHub</string>
+
+    <!-- Permission -->
+    <string name="perm_title">Allow access to all files</string>
+    <string name="perm_message">OpenFiles needs permission to manage your storage so you can browse and organise your files. No data ever leaves your device.</string>
+    <string name="allow">Allow</string>
+</resources>

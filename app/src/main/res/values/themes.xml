@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OpenFiles" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:colorBackground">@color/of_background</item>
+        <item name="android:windowBackground">@color/of_background</item>
+        <item name="colorPrimary">@color/of_accent</item>
+        <item name="colorSecondary">@color/of_accent</item>
+        <item name="colorSurface">@color/of_surface</item>
+        <item name="android:textColorPrimary">@color/of_text_primary</item>
+        <item name="android:textColorSecondary">@color/of_text_secondary</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+</resources>
