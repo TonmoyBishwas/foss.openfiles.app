@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_margin">16dp</dimen>
+    <dimen name="card_radius">26dp</dimen>
+    <dimen name="list_item_height">88dp</dimen>
+    <dimen name="toolbar_height">64dp</dimen>
+    <dimen name="section_title_size">24sp</dimen>
+    <dimen name="item_title_size">18sp</dimen>
+    <dimen name="item_subtitle_size">14sp</dimen>
+</resources>

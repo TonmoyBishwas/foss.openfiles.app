@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp" android:height="12dp"
+    android:viewportWidth="12" android:viewportHeight="12"
+    android:tint="?attr/colorControlNormal"
+    android:autoMirrored="true">
+    <!-- small solid right-pointing triangle -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M4,2.6 L9.2,6 L4,9.4 Z" />
+</vector>

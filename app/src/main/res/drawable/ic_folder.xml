@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="40" android:viewportHeight="40"
+    android:tint="?attr/colorControlNormal">
+    <!-- folder body with raised tab, One UI style -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M5,12.5 C5,10.6 6.6,9 8.5,9 L15.5,9 C16.4,9 17.3,9.4 17.9,10 L19.4,11.6 C19.8,12 20.3,12.2 20.8,12.2 L31.5,12.2 C33.4,12.2 35,13.8 35,15.7 L35,27.5 C35,29.4 33.4,31 31.5,31 L8.5,31 C6.6,31 5,29.4 5,27.5 Z" />
+</vector>

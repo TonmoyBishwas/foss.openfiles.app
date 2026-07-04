@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="46dp" android:height="46dp"
+    android:viewportWidth="46" android:viewportHeight="46">
+    <!-- rounded-square blue tile with white note, like default audio thumbnails -->
+    <path
+        android:fillColor="#5F5FE0"
+        android:pathData="M0,14 C0,6.3 6.3,0 14,0 L32,0 C39.7,0 46,6.3 46,14 L46,32 C46,39.7 39.7,46 32,46 L14,46 C6.3,46 0,39.7 0,32 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M20,31.5 L20,15.5 C20,14.7 20.6,14.1 21.4,14.2 L27.6,15.7 C28.3,15.9 28.8,16.5 28.8,17.2 L28.8,20" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M15.5,31 A4.5,3.8 0 1,0 24.5,31 A4.5,3.8 0 1,0 15.5,31" />
+</vector>

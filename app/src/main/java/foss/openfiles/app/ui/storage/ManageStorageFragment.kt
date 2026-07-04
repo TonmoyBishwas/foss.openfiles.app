@@ -1,0 +1,238 @@
+package foss.openfiles.app.ui.storage
+
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.os.Bundle
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import foss.openfiles.app.R
+import foss.openfiles.app.data.MediaQuery
+import foss.openfiles.app.data.StorageVolumes
+import foss.openfiles.app.data.Trash
+import foss.openfiles.app.theme.ThemeManager
+import foss.openfiles.app.util.Format
+import java.util.concurrent.Executors
+
+/** Manage storage: percent used, segmented bar, per-category sizes. */
+class ManageStorageFragment : Fragment() {
+
+    private val executor = Executors.newSingleThreadExecutor()
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private data class Seg(val labelRes: Int, val colorRes: Int, var bytes: Long = 0)
+
+    private lateinit var segments: List<Seg>
+    private lateinit var barView: SegmentBar
+    private lateinit var legendBox: LinearLayout
+    private lateinit var percentLabel: TextView
+    private lateinit var usageLabel: TextView
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        val ctx = requireContext()
+        val root = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(ContextCompat.getColor(ctx, R.color.of_background))
+        }
+
+        // Toolbar
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+        }
+        bar.addView(ImageButton(ctx).apply {
+            setImageResource(R.drawable.ic_back)
+            setColorFilter(ContextCompat.getColor(ctx, R.color.of_text_primary))
+            background = ContextCompat.getDrawable(ctx, R.drawable.ripple_circle)
+            setOnClickListener { requireActivity().onBackPressed() }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
+        bar.addView(TextView(ctx).apply {
+            text = getString(R.string.manage_storage)
+            textSize = 26f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(ThemeManager.accent(ctx))
+            setPadding(dp(8), 0, 0, 0)
+        })
+        root.addView(bar)
+
+        val content = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(30))
+        }
+
+        content.addView(TextView(ctx).apply {
+            text = getString(R.string.internal_storage)
+            textSize = 22f
+            setTextColor(ContextCompat.getColor(ctx, R.color.of_text_secondary))
+        })
+
+        // "92% used   118.4 GB / 128 GB"
+        val usageRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+            setPadding(0, dp(10), 0, 0)
+        }
+        percentLabel = TextView(ctx).apply {
+            textSize = 44f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
+        }
+        usageRow.addView(percentLabel)
+        usageLabel = TextView(ctx).apply {
+            textSize = 17f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
+            gravity = Gravity.END or Gravity.BOTTOM
+            setPadding(0, 0, 0, dp(8))
+        }
+        usageRow.addView(usageLabel, LinearLayout.LayoutParams(
+            0, ViewGroup.LayoutParams.MATCH_PARENT, 1f
+        ))
+        content.addView(usageRow)
+
+        // Segmented bar
+        segments = listOf(
+            Seg(R.string.cat_images, R.color.seg_images),
+            Seg(R.string.cat_videos, R.color.seg_videos),
+            Seg(R.string.cat_audio, R.color.seg_audio),
+            Seg(R.string.cat_documents, R.color.seg_documents),
+            Seg(R.string.cat_apk, R.color.seg_apk),
+            Seg(R.string.seg_compressed, R.color.seg_compressed),
+            Seg(R.string.seg_other, R.color.seg_other),
+            Seg(R.string.recycle_bin, R.color.seg_bin)
+        )
+        barView = SegmentBar(ctx)
+        content.addView(barView, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(30)
+        ).apply { topMargin = dp(18) })
+
+        legendBox = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(16), 0, 0)
+        }
+        content.addView(legendBox)
+
+        root.addView(ScrollView(ctx).apply {
+            isVerticalScrollBarEnabled = false
+            addView(content)
+        })
+
+        load()
+        return root
+    }
+
+    private fun load() {
+        executor.execute {
+            val ctx = context ?: return@execute
+            val volume = StorageVolumes.list(ctx).first { it.isPrimary }
+            val realTotal = StorageVolumes.realTotalOf(volume.root)
+            val free = StorageVolumes.freeOf(volume.root)
+            val used = realTotal - free
+            val marketingTotal = volume.totalBytes
+
+            val values = listOf(
+                MediaQuery.categorySize(ctx, MediaQuery.Category.IMAGES),
+                MediaQuery.categorySize(ctx, MediaQuery.Category.VIDEOS),
+                MediaQuery.categorySize(ctx, MediaQuery.Category.AUDIO),
+                MediaQuery.categorySize(ctx, MediaQuery.Category.DOCUMENTS),
+                MediaQuery.categorySize(ctx, MediaQuery.Category.APK),
+                0L, // compressed placeholder, computed below
+                0L, // other, computed below
+                Trash.totalSize(ctx)
+            ).toMutableList()
+
+            val known = values.sum()
+            values[6] = (used - known).coerceAtLeast(0)
+
+            view?.post {
+                if (!isAdded) return@post
+                for ((i, seg) in segments.withIndex()) seg.bytes = values[i]
+                val pct = if (marketingTotal > 0) (used * 100 / marketingTotal).toInt() else 0
+                percentLabel.text = getString(R.string.percent_used, pct)
+                usageLabel.text =
+                    "${Format.sizeShort(used)} / ${Format.sizeShort(marketingTotal).replace(".0", "")}"
+                barView.set(segments.map {
+                    ContextCompat.getColor(requireContext(), it.colorRes) to it.bytes
+                }, marketingTotal)
+                renderLegend()
+            }
+        }
+    }
+
+    private fun renderLegend() {
+        val ctx = requireContext()
+        legendBox.removeAllViews()
+        for (seg in segments) {
+            if (seg.bytes <= 0 && seg.labelRes != R.string.recycle_bin) continue
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(13), 0, dp(13))
+            }
+            row.addView(View(ctx).apply {
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(ContextCompat.getColor(ctx, seg.colorRes))
+                }
+            }, LinearLayout.LayoutParams(dp(12), dp(12)))
+            row.addView(TextView(ctx).apply {
+                setText(seg.labelRes)
+                textSize = 19f
+                setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
+                setPadding(dp(16), 0, 0, 0)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(TextView(ctx).apply {
+                text = Format.size(seg.bytes)
+                textSize = 18f
+                setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
+            })
+            legendBox.addView(row)
+        }
+    }
+
+    /** Rounded horizontal bar with colored segments over a gray free-space track. */
+    private class SegmentBar(context: android.content.Context) : View(context) {
+        private var data: List<Pair<Int, Long>> = emptyList()
+        private var total = 1L
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val path = android.graphics.Path()
+
+        fun set(segments: List<Pair<Int, Long>>, totalBytes: Long) {
+            data = segments
+            total = totalBytes.coerceAtLeast(1)
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val r = height / 2f
+            path.reset()
+            path.addRoundRect(
+                0f, 0f, width.toFloat(), height.toFloat(), r, r, android.graphics.Path.Direction.CW
+            )
+            canvas.clipPath(path)
+
+            paint.color = 0xFF5A5D61.toInt()
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+            var x = 0f
+            for ((color, bytes) in data) {
+                if (bytes <= 0) continue
+                val w = width * bytes.toFloat() / total
+                paint.color = color
+                canvas.drawRect(x, 0f, x + w, height.toFloat(), paint)
+                x += w
+            }
+        }
+    }
+}

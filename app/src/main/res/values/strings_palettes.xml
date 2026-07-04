@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="palette_blue">Blue</string>
+    <string name="palette_green">Green</string>
+    <string name="palette_purple">Purple</string>
+    <string name="palette_pink">Pink</string>
+    <string name="palette_orange">Orange</string>
+    <string name="palette_mint">Mint</string>
+    <string name="palette_gray">Grey</string>
+    <string name="palette_dynamic">Device colours</string>
+    <string name="palette_dynamic_desc">Use colours from your device theme (Android 12+)</string>
+</resources>
