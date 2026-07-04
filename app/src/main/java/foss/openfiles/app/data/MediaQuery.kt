@@ -7,7 +7,7 @@ import java.io.File
 /** Category listings backed by MediaStore, with selection-based queries for speed. */
 object MediaQuery {
 
-    enum class Category { IMAGES, VIDEOS, AUDIO, DOCUMENTS, DOWNLOADS, APK }
+    enum class Category { IMAGES, VIDEOS, AUDIO, DOCUMENTS, DOWNLOADS, APK, COMPRESSED }
 
     private val DOC_EXTS = listOf(
         "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "odp",
@@ -29,6 +29,7 @@ object MediaQuery {
             )
             Category.DOCUMENTS -> filesByExtension(context, DOC_EXTS)
             Category.APK -> filesByExtension(context, APK_EXTS)
+            Category.COMPRESSED -> filesByExtension(context, ZIP_EXTS)
             Category.DOWNLOADS -> downloads(context, showHidden)
         }
 
@@ -168,6 +169,61 @@ object MediaQuery {
             }
         }
         return CategoryUsage(images, videos, audio, documents, apk, compressed)
+    }
+
+    /**
+     * Fast name search backed by the MediaStore index — a single indexed query
+     * instead of walking the whole filesystem. Covers files and folders on all
+     * volumes MediaStore knows about.
+     */
+    fun searchIndexed(
+        context: Context,
+        query: String,
+        showHidden: Boolean,
+        kinds: Set<FileKind>?,
+        newerThan: Long?,
+        limit: Int = 500
+    ): List<FileItem> {
+        val uri = MediaStore.Files.getContentUri("external")
+        var selection = "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?"
+        val args = mutableListOf("%$query%")
+        if (newerThan != null) {
+            selection += " AND ${MediaStore.MediaColumns.DATE_MODIFIED} >= ?"
+            args += (newerThan / 1000).toString()
+        }
+        val projection = arrayOf(
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED
+        )
+        val out = mutableListOf<FileItem>()
+        runCatching {
+            context.contentResolver.query(
+                uri, projection, selection, args.toTypedArray(),
+                "${MediaStore.MediaColumns.DISPLAY_NAME} COLLATE NOCASE ASC"
+            )?.use { c ->
+                val dataCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                val dateCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                while (c.moveToNext() && out.size < limit) {
+                    if (Thread.currentThread().isInterrupted) return@use
+                    val path = c.getString(dataCol) ?: continue
+                    if (!showHidden && path.contains("/.")) continue
+                    val f = File(path)
+                    if (!f.exists()) continue
+                    val item = if (f.isDirectory) FileItem.from(f) else FileItem(
+                        path = path,
+                        name = f.name,
+                        isDirectory = false,
+                        size = c.getLong(sizeCol),
+                        lastModified = c.getLong(dateCol) * 1000
+                    )
+                    if (kinds != null && (item.isDirectory || FileKind.of(item) !in kinds)) continue
+                    out += item
+                }
+            }
+        }
+        return out
     }
 
     /** Recursive filesystem search across a volume. */

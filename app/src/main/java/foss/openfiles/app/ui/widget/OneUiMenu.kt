@@ -39,7 +39,8 @@ class OneUiMenu(private val context: Context) {
             orientation = LinearLayout.VERTICAL
             background = ContextCompat.getDrawable(context, R.drawable.bg_popup)
             elevation = dp(8).toFloat()
-            setPadding(0, dp(10), 0, dp(10))
+            setPadding(0, dp(7), 0, dp(7))
+            minimumWidth = dp(172)
         }
 
         lateinit var popup: PopupWindow
@@ -56,11 +57,11 @@ class OneUiMenu(private val context: Context) {
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(26), dp(13), dp(22), dp(13))
+                setPadding(dp(20), dp(10), dp(16), dp(10))
                 setBackgroundResource(R.drawable.ripple_item)
                 addView(TextView(context).apply {
                     text = item.title
-                    textSize = 19f
+                    textSize = 16f
                     setTextColor(
                         if (item.checked) ThemeManager.accent(context)
                         else ContextCompat.getColor(context, R.color.of_text_primary)
@@ -70,12 +71,12 @@ class OneUiMenu(private val context: Context) {
                     addView(ImageView(context).apply {
                         setImageResource(R.drawable.ic_check)
                         setColorFilter(ThemeManager.accent(context))
-                    }, LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                        marginStart = dp(24)
+                    }, LinearLayout.LayoutParams(dp(18), dp(18)).apply {
+                        marginStart = dp(20)
                     })
                 } else if (anyChecked) {
-                    addView(View(context), LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                        marginStart = dp(24)
+                    addView(View(context), LinearLayout.LayoutParams(dp(18), dp(18)).apply {
+                        marginStart = dp(20)
                     })
                 }
                 setOnClickListener {

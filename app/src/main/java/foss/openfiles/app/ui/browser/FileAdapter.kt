@@ -20,7 +20,8 @@ import foss.openfiles.app.util.Thumbs
  * a thin inset divider under each row like the stock list.
  */
 class FileAdapter(
-    private val listener: Listener
+    private val listener: Listener,
+    private val grid: Boolean = false
 ) : RecyclerView.Adapter<FileAdapter.Holder>() {
 
     interface Listener {
@@ -51,13 +52,15 @@ class FileAdapter(
         val icon: ImageView = view.findViewById(R.id.icon)
         val badge: ImageView = view.findViewById(R.id.badge)
         val name: TextView = view.findViewById(R.id.name)
-        val date: TextView = view.findViewById(R.id.date)
-        val meta: TextView = view.findViewById(R.id.meta)
+        val date: TextView? = view.findViewById(R.id.date)
+        val meta: TextView? = view.findViewById(R.id.meta)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
         Holder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_file, parent, false)
+            LayoutInflater.from(parent.context).inflate(
+                if (grid) R.layout.item_grid else R.layout.item_file, parent, false
+            )
         )
 
     override fun getItemCount(): Int = items.size
@@ -68,8 +71,8 @@ class FileAdapter(
         val kind = FileKind.of(item)
 
         holder.name.text = item.name
-        holder.date.text = Format.date(item.lastModified)
-        holder.meta.text = when {
+        holder.date?.text = Format.date(item.lastModified)
+        holder.meta?.text = when {
             item.isDirectory && item.childCount == 0 -> ctx.getString(R.string.no_items)
             item.isDirectory && item.childCount == 1 -> ctx.getString(R.string.item_count_one)
             item.isDirectory -> ctx.getString(R.string.items_count, item.childCount)
@@ -94,7 +97,7 @@ class FileAdapter(
 
         val custom = subtitleProvider?.invoke(item)
         if (custom != null) {
-            holder.date.text = custom
+            holder.date?.text = custom
         }
     }
 
@@ -117,6 +120,9 @@ class FileAdapter(
             }
         }
     }
+
+    /** Thumbnail decode size — bigger in grid mode where tiles are full-bleed. */
+    private val thumbPx: Int get() = if (grid) 220 else 96
 
     private fun bindIcon(holder: Holder, item: FileItem, kind: FileKind) {
         val ctx = holder.itemView.context
@@ -142,6 +148,7 @@ class FileAdapter(
                     ContextCompat.getDrawable(ctx, R.drawable.bg_badge)
                 holder.badge.background.setTint(darker(ThemeManager.folder(ctx)))
             }
+            applyGridSizing(holder, fullBleed = false)
             return
         }
 
@@ -152,7 +159,7 @@ class FileAdapter(
                 holder.icon.scaleType = ImageView.ScaleType.CENTER_CROP
                 holder.icon.background = ContextCompat.getDrawable(ctx, R.drawable.bg_thumb)
                 holder.icon.clipToOutline = true
-                Thumbs.load(holder.icon, item.path, kind, 96)
+                Thumbs.load(holder.icon, item.path, kind, thumbPx)
             }
             FileKind.AUDIO -> {
                 tint(null)
@@ -160,19 +167,19 @@ class FileAdapter(
                 holder.icon.background = ContextCompat.getDrawable(ctx, R.drawable.bg_thumb)
                 holder.icon.clipToOutline = true
                 holder.icon.setImageResource(R.drawable.ic_audio_tile)
-                Thumbs.load(holder.icon, item.path, kind, 96)
+                Thumbs.load(holder.icon, item.path, kind, thumbPx)
             }
             FileKind.APK -> {
                 tint(null)
                 holder.icon.setImageResource(R.drawable.ic_file_generic)
                 holder.icon.imageTintList =
                     android.content.res.ColorStateList.valueOf(0xFF6E7378.toInt())
-                Thumbs.cached(item.path, 96)?.let {
+                Thumbs.cached(item.path, thumbPx)?.let {
                     tint(null)
                     holder.icon.setImageBitmap(it)
                 } ?: run {
                     tint(null)
-                    Thumbs.load(holder.icon, item.path, kind, 96)
+                    Thumbs.load(holder.icon, item.path, kind, thumbPx)
                 }
             }
             else -> {
@@ -180,6 +187,28 @@ class FileAdapter(
                 tint(colorFor(ctx, kind))
             }
         }
+
+        applyGridSizing(
+            holder,
+            fullBleed = kind == FileKind.IMAGE || kind == FileKind.VIDEO || kind == FileKind.AUDIO
+        )
+    }
+
+    /** In grid mode, media thumbnails fill the whole tile; everything else stays a centred glyph. */
+    private fun applyGridSizing(holder: Holder, fullBleed: Boolean) {
+        if (!grid) return
+        val lp = holder.icon.layoutParams as android.widget.FrameLayout.LayoutParams
+        if (fullBleed) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+            lp.height = ViewGroup.LayoutParams.MATCH_PARENT
+            holder.icon.background = null
+            holder.icon.clipToOutline = false
+        } else {
+            val d = holder.itemView.resources.displayMetrics.density
+            lp.width = (44 * d).toInt()
+            lp.height = (44 * d).toInt()
+        }
+        holder.icon.layoutParams = lp
     }
 
     private fun badgeFor(folderName: String): Int? = when (folderName.lowercase()) {

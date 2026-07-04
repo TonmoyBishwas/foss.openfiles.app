@@ -8,6 +8,8 @@
     <color name="of_text_primary">#FAFAFA</color>
     <color name="of_text_secondary">#8F9296</color>
     <color name="of_divider">#33FFFFFF</color>
+    <color name="grid_tile">#2A2C2F</color>
+    <color name="grid_label">#1E1F22</color>
 
     <!-- Accent (default "blue" palette) -->
     <color name="of_accent">#95AFD4</color>

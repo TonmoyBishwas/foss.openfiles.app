@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -18,6 +19,9 @@ import foss.openfiles.app.data.MediaQuery
 import foss.openfiles.app.data.StorageVolumes
 import foss.openfiles.app.data.Trash
 import foss.openfiles.app.theme.ThemeManager
+import foss.openfiles.app.ui.category.CategoryFragment
+import foss.openfiles.app.ui.main.MainActivity
+import foss.openfiles.app.ui.recycle.RecycleBinFragment
 import foss.openfiles.app.util.Format
 import java.util.concurrent.Executors
 
@@ -28,7 +32,12 @@ class ManageStorageFragment : Fragment() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    private data class Seg(val labelRes: Int, val colorRes: Int, var bytes: Long = 0)
+    private data class Seg(
+        val labelRes: Int,
+        val colorRes: Int,
+        var bytes: Long = 0,
+        val category: MediaQuery.Category? = null
+    )
 
     private lateinit var segments: List<Seg>
     private lateinit var barView: SegmentBar
@@ -104,12 +113,12 @@ class ManageStorageFragment : Fragment() {
 
         // Segmented bar
         segments = listOf(
-            Seg(R.string.cat_images, R.color.seg_images),
-            Seg(R.string.cat_videos, R.color.seg_videos),
-            Seg(R.string.cat_audio, R.color.seg_audio),
-            Seg(R.string.cat_documents, R.color.seg_documents),
-            Seg(R.string.cat_apk, R.color.seg_apk),
-            Seg(R.string.seg_compressed, R.color.seg_compressed),
+            Seg(R.string.cat_images, R.color.seg_images, category = MediaQuery.Category.IMAGES),
+            Seg(R.string.cat_videos, R.color.seg_videos, category = MediaQuery.Category.VIDEOS),
+            Seg(R.string.cat_audio, R.color.seg_audio, category = MediaQuery.Category.AUDIO),
+            Seg(R.string.cat_documents, R.color.seg_documents, category = MediaQuery.Category.DOCUMENTS),
+            Seg(R.string.cat_apk, R.color.seg_apk, category = MediaQuery.Category.APK),
+            Seg(R.string.seg_compressed, R.color.seg_compressed, category = MediaQuery.Category.COMPRESSED),
             Seg(R.string.seg_other, R.color.seg_other),
             Seg(R.string.recycle_bin, R.color.seg_bin)
         )
@@ -212,6 +221,27 @@ class ManageStorageFragment : Fragment() {
                 textSize = 18f
                 setTextColor(ContextCompat.getColor(ctx, R.color.of_text_primary))
             })
+
+            // Category rows open a sortable listing of that category's files,
+            // and the Recycle bin row opens the bin — like the stock app.
+            val cat = seg.category
+            val open: (() -> Unit)? = when {
+                cat != null -> {
+                    { (activity as MainActivity).push(CategoryFragment.newInstance(cat)) }
+                }
+                seg.labelRes == R.string.recycle_bin -> {
+                    { (activity as MainActivity).push(RecycleBinFragment()) }
+                }
+                else -> null
+            }
+            if (open != null) {
+                row.addView(ImageView(ctx).apply {
+                    setImageResource(R.drawable.ic_chevron_right)
+                    setColorFilter(ContextCompat.getColor(ctx, R.color.of_text_secondary))
+                }, LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginStart = dp(8) })
+                row.setBackgroundResource(R.drawable.ripple_item)
+                row.setOnClickListener { open() }
+            }
             legendBox.addView(row)
         }
     }

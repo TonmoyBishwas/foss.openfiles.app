@@ -78,6 +78,7 @@ class CategoryFragment : Fragment(), FileAdapter.Listener {
         MediaQuery.Category.DOCUMENTS -> R.string.cat_documents
         MediaQuery.Category.DOWNLOADS -> R.string.cat_downloads
         MediaQuery.Category.APK -> R.string.cat_apk
+        MediaQuery.Category.COMPRESSED -> R.string.seg_compressed
     }
 
     private fun buildBreadcrumb(view: View) {

@@ -68,10 +68,8 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
                 ?: requireArguments().getString(ARG_PATH)!!
         )
 
-        adapter = FileAdapter(this)
         list = view.findViewById(R.id.fileList)
         applyViewMode()
-        list.adapter = adapter
 
         view.findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
             requireActivity().onBackPressed()
@@ -134,11 +132,15 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
     }
 
     private fun applyViewMode() {
-        list.layoutManager = if (Prefs.viewMode == 2) {
+        val grid = Prefs.viewMode == 2
+        adapter = FileAdapter(this, grid)
+        list.layoutManager = if (grid) {
             GridLayoutManager(requireContext(), 4)
         } else {
             LinearLayoutManager(requireContext())
         }
+        list.adapter = adapter
+        adapter.items = items
     }
 
     // ---- Breadcrumb -------------------------------------------------------
@@ -193,6 +195,14 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
                 if (isLast) setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setBackgroundResource(R.drawable.ripple_item)
                 setPadding(dp(4), dp(6), dp(4), dp(6))
+                if (isLast) {
+                    // Long names auto-scroll (marquee) inside the visible width.
+                    isSingleLine = true
+                    ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                    marqueeRepeatLimit = -1
+                    maxWidth = resources.displayMetrics.widthPixels - dp(110)
+                    isSelected = true
+                }
                 setOnClickListener {
                     if (!isLast) navigateTo(seg)
                 }
@@ -200,10 +210,18 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
             bar.addView(label)
         }
 
-        view?.findViewById<HorizontalScrollView>(R.id.breadcrumbScroll)?.post {
-            view?.findViewById<HorizontalScrollView>(R.id.breadcrumbScroll)
-                ?.fullScroll(View.FOCUS_RIGHT)
-        }
+        // Scroll to the current (last) crumb once the new views have been laid out.
+        val scroll = view?.findViewById<HorizontalScrollView>(R.id.breadcrumbScroll)
+        scroll?.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View, l: Int, t: Int, r: Int, b: Int,
+                ol: Int, ot: Int, or2: Int, ob: Int
+            ) {
+                v.removeOnLayoutChangeListener(this)
+                scroll.scrollTo(bar.width, 0)
+            }
+        })
+        scroll?.requestLayout()
 
         // Filter row only at volume root, like the stock app
         view?.findViewById<TextView>(R.id.filterLabel)?.setText(

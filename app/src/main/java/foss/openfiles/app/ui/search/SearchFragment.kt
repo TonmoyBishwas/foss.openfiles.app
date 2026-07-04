@@ -35,6 +35,7 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
 
     private val executor = Executors.newSingleThreadExecutor()
     private var pending: Future<*>? = null
+    private val debounce = android.os.Handler(android.os.Looper.getMainLooper())
 
     private lateinit var input: EditText
     private lateinit var resultList: RecyclerView
@@ -89,7 +90,12 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
                     val q = s?.toString().orEmpty()
-                    if (q.length >= 2) runSearch(q) else showPanel()
+                    debounce.removeCallbacksAndMessages(null)
+                    if (q.length >= 2) {
+                        debounce.postDelayed({ runSearch(q) }, 250)
+                    } else {
+                        showPanel()
+                    }
                 }
             })
         }
@@ -169,26 +175,23 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
 
         // Type chips
         box.addView(sectionLabel(R.string.type))
-        val typeRow1 = chipRow()
-        val typeRow2 = chipRow()
+        val typeRow = chipRow()
         val types = listOf(
-            Triple(R.string.type_image, FileKind.IMAGE, typeRow1),
-            Triple(R.string.type_video, FileKind.VIDEO, typeRow1),
-            Triple(R.string.type_audio, FileKind.AUDIO, typeRow1),
-            Triple(R.string.type_document, FileKind.DOCUMENT, typeRow1),
-            Triple(R.string.type_apk, FileKind.APK, typeRow2),
-            Triple(R.string.type_compressed, FileKind.COMPRESSED, typeRow2)
+            R.string.type_image to FileKind.IMAGE,
+            R.string.type_video to FileKind.VIDEO,
+            R.string.type_audio to FileKind.AUDIO,
+            R.string.type_document to FileKind.DOCUMENT,
+            R.string.type_apk to FileKind.APK,
+            R.string.type_compressed to FileKind.COMPRESSED
         )
-        for ((res, kind, row) in types) {
-            row.addView(chip(getString(res)) { selected, chipView ->
+        for ((res, kind) in types) {
+            typeRow.addView(chip(getString(res)) { selected, chipView ->
                 typeFilter = if (selected) kind else null
-                deselectSiblings(typeRow1, chipView)
-                deselectSiblings(typeRow2, chipView)
+                deselectSiblings(typeRow, chipView)
                 refreshIfActive()
             })
         }
-        box.addView(typeRow1)
-        box.addView(typeRow2)
+        box.addView(typeRow)
 
         // Recent searches
         recentBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
@@ -267,9 +270,8 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
             setPadding(0, dp(22), 0, dp(10))
         }
 
-    private fun chipRow(): LinearLayout =
-        LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
+    private fun chipRow(): ViewGroup =
+        foss.openfiles.app.ui.widget.FlowLayout(requireContext()).apply {
             setPadding(0, dp(4), 0, dp(4))
         }
 
@@ -290,9 +292,9 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
                 setChipState(this, selected)
                 onToggle(selected, this)
             }
-            layoutParams = LinearLayout.LayoutParams(
+            layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = dp(10) }
+            )
         }
     }
 
@@ -305,7 +307,7 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
         if (selected) chipView.background.setTint(ThemeManager.accentStrong(ctx))
     }
 
-    private fun deselectSiblings(row: LinearLayout, keep: View, exceptRow: Boolean = true) {
+    private fun deselectSiblings(row: ViewGroup, keep: View, exceptRow: Boolean = true) {
         for (i in 0 until row.childCount) {
             val child = row.getChildAt(i)
             if (child !== keep && child is TextView && child.tag == true) {
@@ -317,6 +319,12 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
     private fun refreshIfActive() {
         val q = input.text.toString()
         if (q.length >= 2) runSearch(q)
+    }
+
+    override fun onDestroyView() {
+        debounce.removeCallbacksAndMessages(null)
+        pending?.cancel(true)
+        super.onDestroyView()
     }
 
     // ---- Searching -----------------------------------------------------------
@@ -342,12 +350,9 @@ class SearchFragment : Fragment(), FileAdapter.Listener {
         }
         pending = executor.submit {
             val ctx = context ?: return@submit
-            val results = mutableListOf<FileItem>()
-            for (v in StorageVolumes.list(ctx)) {
-                results += MediaQuery.search(
-                    v.root, query, Prefs.showHidden, kinds, newerThan
-                )
-            }
+            val results = MediaQuery.searchIndexed(
+                ctx, query, Prefs.showHidden, kinds, newerThan
+            )
             if (Thread.currentThread().isInterrupted) return@submit
             view?.post {
                 if (!isAdded) return@post
