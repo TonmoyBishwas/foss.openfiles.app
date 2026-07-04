@@ -18,6 +18,14 @@
 - 📦 No network features, no cloud, no ads, no analytics — your files stay on your device
 - 🪶 Lightweight, native Android (Kotlin + Views), supports older devices
 
+## Download
+
+Grab the latest APK from the [Releases page](https://github.com/TonmoyBishwas/foss.openfiles.app/releases).
+
+- **Requires:** Android 5.0 (API 21) or newer
+- **APK size:** under 2 MB — as light as a native file manager
+- On Android 11+ the app asks for *All files access* so it can manage your storage; below that it uses the classic storage permission.
+
 ## Building
 
 ```bash
