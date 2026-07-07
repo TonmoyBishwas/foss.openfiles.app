@@ -36,17 +36,21 @@ object Trash {
     private fun binDir(context: Context, volumeRoot: File): File =
         File(volumeRoot, DIR_NAME).apply { mkdirs() }
 
-    private fun volumeRootFor(context: Context, file: File): File {
-        for (v in StorageVolumes.list(context)) {
+    private fun volumeRootFor(volumes: List<VolumeInfo>, file: File): File {
+        for (v in volumes) {
             if (file.absolutePath.startsWith(v.root.absolutePath)) return v.root
         }
-        return StorageVolumes.list(context).first { it.isPrimary }.root
+        return volumes.first { it.isPrimary }.root
     }
 
     fun moveToTrash(context: Context, files: List<File>): Boolean {
         var ok = true
+        val volumes = StorageVolumes.list(context)
+        // Cache each bin's index so a multi-select delete doesn't re-read
+        // and re-parse the JSON once per file.
+        val indexes = HashMap<String, JSONArray>()
         for (f in files) {
-            val root = volumeRootFor(context, f)
+            val root = volumeRootFor(volumes, f)
             val bin = binDir(context, root)
             val id = "${System.currentTimeMillis()}_${f.name.hashCode()}_${(0..99999).random()}"
             val stored = File(bin, id)
@@ -61,7 +65,7 @@ object Trash {
                 ok = false
                 continue
             }
-            val entries = readIndex(bin)
+            val entries = indexes.getOrPut(bin.absolutePath) { readIndex(bin) }
             entries.put(JSONObject().apply {
                 put("id", id)
                 put("path", f.absolutePath)
@@ -167,6 +171,15 @@ object Trash {
         runCatching { JSONArray(File(bin, INDEX).readText()) }.getOrDefault(JSONArray())
 
     private fun writeIndex(bin: File, arr: JSONArray) {
-        runCatching { File(bin, INDEX).writeText(arr.toString()) }
+        // Write to a temp file and rename so a crash mid-write can't corrupt the index.
+        runCatching {
+            val tmp = File(bin, "$INDEX.tmp")
+            tmp.writeText(arr.toString())
+            val index = File(bin, INDEX)
+            if (!tmp.renameTo(index)) {
+                index.delete()
+                tmp.renameTo(index)
+            }
+        }
     }
 }

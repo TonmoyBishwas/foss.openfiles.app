@@ -84,7 +84,7 @@ class HomeFragment : Fragment() {
                     dot.visibility = View.GONE
                 }
                 list.adapter = RecentAdapter(recents) { item ->
-                    foss.openfiles.app.util.Open.file(requireActivity(), item.file)
+                    activity?.let { foss.openfiles.app.util.Open.file(it, item.file) }
                 }
             }
         }
@@ -145,10 +145,21 @@ class HomeFragment : Fragment() {
     // ---- Storage + Utilities ----------------------------------------------
 
     private fun buildStorage(root: View) {
+        // Volume detection touches StatFs/app dirs — off the main thread.
+        executor.execute {
+            val ctx = context ?: return@execute
+            val volumes = StorageVolumes.list(ctx)
+            root.post {
+                if (isAdded) renderStorage(root, volumes)
+            }
+        }
+    }
+
+    private fun renderStorage(root: View, volumes: List<foss.openfiles.app.data.VolumeInfo>) {
         val list = root.findViewById<LinearLayout>(R.id.storageList)
         list.removeAllViews()
         val ctx = requireContext()
-        for (volume in StorageVolumes.list(ctx)) {
+        for (volume in volumes) {
             val row = layoutInflater.inflate(R.layout.item_home_row, list, false)
             row.findViewById<ImageView>(R.id.icon).setImageResource(
                 when {

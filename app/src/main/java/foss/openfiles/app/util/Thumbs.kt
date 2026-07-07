@@ -54,8 +54,6 @@ object Thumbs {
         }
     }
 
-    fun cached(path: String, sizePx: Int): Bitmap? = cache.get("$path@$sizePx")
-
     private fun decode(context: Context, file: File, kind: FileKind, sizePx: Int): Bitmap? =
         when (kind) {
             FileKind.IMAGE -> decodeImage(file, sizePx)
@@ -74,16 +72,49 @@ object Thumbs {
             sample *= 2
         }
         val real = BitmapFactory.Options().apply { inSampleSize = sample }
-        return BitmapFactory.decodeFile(file.absolutePath, real)
+        val bmp = BitmapFactory.decodeFile(file.absolutePath, real) ?: return null
+        return rotateByExif(file, bmp)
+    }
+
+    /** Camera photos carry their rotation in EXIF; without this they render sideways. */
+    private fun rotateByExif(file: File, bmp: Bitmap): Bitmap {
+        val orientation = runCatching {
+            android.media.ExifInterface(file.absolutePath).getAttributeInt(
+                android.media.ExifInterface.TAG_ORIENTATION,
+                android.media.ExifInterface.ORIENTATION_NORMAL
+            )
+        }.getOrDefault(android.media.ExifInterface.ORIENTATION_NORMAL)
+        val degrees = when (orientation) {
+            android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> return bmp
+        }
+        val m = android.graphics.Matrix().apply { postRotate(degrees) }
+        return runCatching {
+            Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
+        }.getOrDefault(bmp)
     }
 
     private fun decodeVideo(file: File, sizePx: Int): Bitmap? =
         runCatching {
-            @Suppress("DEPRECATION")
-            ThumbnailUtils.createVideoThumbnail(
-                file.absolutePath,
-                android.provider.MediaStore.Images.Thumbnails.MINI_KIND
-            )
+            val full = if (android.os.Build.VERSION.SDK_INT >= 29) {
+                ThumbnailUtils.createVideoThumbnail(
+                    file, android.util.Size(sizePx, sizePx), null
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                ThumbnailUtils.createVideoThumbnail(
+                    file.absolutePath,
+                    android.provider.MediaStore.Images.Thumbnails.MINI_KIND
+                )
+            } ?: return null
+            // MINI_KIND is 512x384 — shrink before caching or the LRU thrashes.
+            if (full.width > sizePx * 2 || full.height > sizePx * 2) {
+                ThumbnailUtils.extractThumbnail(
+                    full, sizePx, sizePx, ThumbnailUtils.OPTIONS_RECYCLE_INPUT
+                )
+            } else full
         }.getOrNull()
 
     private fun decodeAlbumArt(file: File, sizePx: Int): Bitmap? {

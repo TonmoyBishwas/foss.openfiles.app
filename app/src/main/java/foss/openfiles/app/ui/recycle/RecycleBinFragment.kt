@@ -221,13 +221,18 @@ class RecycleBinFragment : Fragment() {
     }
 
     private fun emptyBin() {
-        val entries = Trash.list(requireContext())
-        if (entries.isEmpty()) return
-        Dialogs.confirmDelete(requireContext(), entries.size, toTrash = false) {
-            executor.execute {
-                val ctx = context ?: return@execute
-                entries.forEach { Trash.deleteForever(ctx, it) }
-                view?.post { reload() }
+        executor.execute {
+            val ctx = context ?: return@execute
+            val entries = Trash.list(ctx)
+            view?.post {
+                if (!isAdded || entries.isEmpty()) return@post
+                Dialogs.confirmDelete(requireContext(), entries.size, toTrash = false) {
+                    executor.execute {
+                        val c = context ?: return@execute
+                        entries.forEach { Trash.deleteForever(c, it) }
+                        view?.post { reload() }
+                    }
+                }
             }
         }
     }

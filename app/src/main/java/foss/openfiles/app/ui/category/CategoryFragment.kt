@@ -117,8 +117,6 @@ class CategoryFragment : Fragment(), FileAdapter.Listener {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             tag = "totalSize"
         }
-        val parent = bar.parent.parent as LinearLayout // breadcrumbScroll's parent row
-        // Keep simple: append into breadcrumb bar with padding.
         bar.addView(totalLabel, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply { marginStart = dp(24) })
@@ -128,12 +126,12 @@ class CategoryFragment : Fragment(), FileAdapter.Listener {
         val list = view?.findViewById<RecyclerView>(R.id.fileList) ?: return
         executor.execute {
             val ctx = context ?: return@execute
-            var data = MediaQuery.query(ctx, category, Prefs.showHidden)
-            val comparator = Sorting.comparator(Prefs.sortMode, Prefs.sortAscending)
-            data = data.sortedWith(comparator)
-            if (category == MediaQuery.Category.DOWNLOADS) {
+            val raw = MediaQuery.query(ctx, category, Prefs.showHidden)
+            val data = if (category == MediaQuery.Category.DOWNLOADS) {
                 // Keep natural date grouping for downloads
-                data = data.sortedByDescending { it.lastModified }
+                raw.sortedByDescending { it.lastModified }
+            } else {
+                raw.sortedWith(Sorting.comparator(Prefs.sortMode, Prefs.sortAscending))
             }
             view?.post {
                 if (!isAdded) return@post

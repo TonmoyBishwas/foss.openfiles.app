@@ -41,6 +41,9 @@ class SelectFolderSheet(
     private var volumes = StorageVolumes.list(activity)
     private var currentRoot = volumes.first().root
     private var currentDir = currentRoot
+    private val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private var navGeneration = 0
 
     private fun dp(v: Int): Int = (v * activity.resources.displayMetrics.density).toInt()
 
@@ -187,6 +190,7 @@ class SelectFolderSheet(
                 setGravity(Gravity.BOTTOM)
             }
         }
+        dialog.setOnDismissListener { executor.shutdown() }
         navigate(currentDir)
         dialog.show()
     }
@@ -203,10 +207,21 @@ class SelectFolderSheet(
         currentDir = dir
         buildCrumbs()
         listBox.removeAllViews()
-        val folders = FileRepository.list(
-            dir, Prefs.showHidden, false, Sorting.NAME, true
-        ).filter { it.isDirectory && it.name != ".openfiles_trash" }
+        // Directory listing is disk I/O — keep it off the main thread so the
+        // sheet never freezes on large folders or slow SD cards.
+        val gen = ++navGeneration
+        if (executor.isShutdown) return
+        executor.execute {
+            val folders = FileRepository.list(
+                dir, Prefs.showHidden, false, Sorting.NAME, true
+            ).filter { it.isDirectory && it.name != ".openfiles_trash" }
+            main.post {
+                if (gen == navGeneration) renderFolders(folders)
+            }
+        }
+    }
 
+    private fun renderFolders(folders: List<foss.openfiles.app.data.FileItem>) {
         emptyHint.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
 
         for (f in folders) {

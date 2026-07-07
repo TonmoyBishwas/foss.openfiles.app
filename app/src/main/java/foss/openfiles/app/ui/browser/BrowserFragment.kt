@@ -254,16 +254,13 @@ class BrowserFragment : Fragment(), MainActivity.BackHandler, FileAdapter.Listen
 
     override fun onItemLongClick(item: FileItem) {
         if (!adapter.selectionMode) {
-            enterSelection()
             adapter.selected.add(item.path)
-            adapter.notifyDataSetChanged()
-            updateSelectionUi()
+            enterSelection() // selectionMode setter rebinds the list once
         }
     }
 
     override fun onSelectionToggled(item: FileItem) {
-        if (!adapter.selected.remove(item.path)) adapter.selected.add(item.path)
-        adapter.notifyDataSetChanged()
+        // The adapter already toggled the item and rebound just that row.
         updateSelectionUi()
     }
 

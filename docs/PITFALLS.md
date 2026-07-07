@@ -22,6 +22,18 @@ This file records bugs that actually happened (so they don't regress), structura
 
 9. **MediaStore `DATE_MODIFIED` is in seconds.** `FileItem.lastModified` and `java.io.File.lastModified()` are milliseconds. Every cursor read multiplies by 1000; every `newerThan` filter divides by 1000. Getting this wrong makes date filters/grouping silently wrong by a factor of 1000.
 
+10. **Recycled rows flashed the wrong thumbnail.** `Thumbs.load` guards delivery with a `view.tag == key` check, but binds that *don't* call `Thumbs.load` (folders, generic files) left the old tag in place, so a stale in-flight decode could still land. Every adapter bind path must reset the tag (`icon.tag = null`) before deciding whether to load a thumbnail.
+
+11. **Camera photos rendered sideways.** `BitmapFactory` ignores EXIF orientation. `Thumbs.decodeImage` now applies the EXIF rotation (framework `android.media.ExifInterface` — no new dependency). Any new image decode path needs the same.
+
+12. **Selection taps rebound the whole list.** Toggling one checkbox via `notifyDataSetChanged()` rebinds every visible row (thumbnail churn, dropped frames). The adapter now toggles the item itself and calls `notifyItemChanged(position)`; only entering/leaving selection mode rebinds everything.
+
+13. **Main-thread file I/O hid in "small" UI paths.** `SelectFolderSheet.navigate` (directory listing), `RecycleBinFragment.emptyBin` (`Trash.list` = index reads + purge deletes) and `HomeFragment.buildStorage` (StatFs/app-dirs walk) all ran on the UI thread. All listing/measuring goes through an executor — no exceptions, however cheap it looks.
+
+14. **`GridAdapter` leaked an `OnGlobalLayoutListener` per view holder** (added in `onCreateViewHolder`, never removed — fired on every global layout forever). Square tiles are done with a custom `onMeasure` (`SquareFrameLayout`) instead. Never add a ViewTreeObserver listener you don't remove.
+
+15. **Video thumbnails were cached at MINI_KIND size** (512×384 ≈ 786 KB each), thrashing the LRU. Decoded thumbnails are scaled to roughly the requested `sizePx` before caching.
+
 ## Contracts that are easy to break
 
 - **`.openfiles_trash` filtering.** The recycle bin is a real folder at each volume root. `BrowserFragment.reload`, `SelectFolderSheet.navigate`, and `MediaQuery.search` all filter it out explicitly. Any *new* file-listing surface must do the same, or the bin leaks into the UI (and worse, users can delete the index).
@@ -32,13 +44,12 @@ This file records bugs that actually happened (so they don't regress), structura
 
 ## Latent risks (watch these; likely sources of future bugs)
 
-- **`Trash.index.json` writes are not atomic.** A crash mid-write can corrupt/lose the bin index (files remain on disk under `.openfiles_trash/<id>` but become orphaned). If the bin gains importance, write to a temp file + rename. Trash IDs use `timeMillis + hashCode + random(0..99999)` — collision is improbable but nothing dedupes.
+- **`Trash.index.json`** is written via temp file + rename (atomic on the same filesystem) — keep it that way. Trash IDs use `timeMillis + hashCode + random(0..99999)` — collision is improbable but nothing dedupes.
 - **`onBackPressed()` is deprecated.** The `BackHandler` interface hangs off the deprecated override in `MainActivity`. Migrating to `OnBackPressedDispatcher` will be needed for predictive back / future targetSdk pressure — migrate the whole contract at once, not piecemeal.
 - **MediaStore `DATA` column is deprecated.** It works because the app holds All files access and does raw `java.io.File` I/O. Do **not** half-migrate to scoped-storage APIs (SAF, `MediaStore` write APIs) — the app's model assumes raw path access everywhere.
 - **MediaStore staleness.** Files created by other apps (or over USB) may not appear in categories/search until the media scanner indexes them. Browser (FileRepository) always sees them; Category/Search may not. If users report "file missing from search", this is why — consider `MediaScannerConnection.scanFile` after our own file operations.
 - **No process-death restoration.** Only `BrowserFragment` saves `currentDir`. Back-stack fragments recreate with their original arguments; anything passed outside `arguments` is lost. Keep fragment inputs in `arguments` (serializable/primitives).
 - **`commitAllowingStateLoss`** in `MainActivity.showEntryScreen` — deliberate (permission return path), but don't copy the pattern elsewhere without reason.
-- **`CategoryFragment.buildBreadcrumb`** contains an unused, fragile lookup: `bar.parent.parent as LinearLayout`. It does nothing today; remove it rather than build on it.
 - **Search hidden-file rule**: `searchIndexed` hides any path containing `/.` — that also hides files *inside* dotted directories (e.g. `.thumbnails/`), not just dotted files. This matches user expectation but differs subtly from the browser's `name.startsWith('.')` rule.
 - **Executor lifecycle.** Per-fragment executors are never shut down; long file operations continue after the fragment dies (`Dialogs.runOperation` progress sheet holds its own lifecycle). Bounded, but don't add unbounded work sources.
 - **Thumbs cache keys include the pixel size** (96 px list / 220 px grid = two cache entries per file). Fine today; adding more sizes multiplies memory. Reuse an existing size when possible.

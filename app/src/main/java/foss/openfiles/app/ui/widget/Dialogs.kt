@@ -297,7 +297,6 @@ object Dialogs {
             row(context.getString(R.string.contains)) else null
         val (_, pathVal) = row(context.getString(R.string.path))
 
-        modVal.text = Format.date(files.maxOf { it.lastModified() })
         pathVal.text = displayPath(context, files[0])
 
         lateinit var dialog: Dialog
@@ -321,8 +320,10 @@ object Dialogs {
                 val (b, fc, dc) = FileRepository.measure(f)
                 bytes += b; fileCount += fc; folderCount += dc
             }
+            val newest = files.maxOf { it.lastModified() }
             main.post {
                 sizeVal.text = Format.size(bytes)
+                modVal.text = Format.date(newest)
                 containsRow?.second?.text = "$fileCount files, $folderCount folder" +
                     (if (folderCount == 1) "" else "s")
             }

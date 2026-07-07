@@ -34,7 +34,7 @@ JAVA_HOME="C:\Program Files\Android\Android Studio\jbr" ./gradlew bundleRelease 
 
 ## Versioning
 
-Bump **both** `versionCode` and `versionName` in `app/build.gradle.kts` for every release (currently versionCode 2 / 0.1.1).
+Bump **both** `versionCode` and `versionName` in `app/build.gradle.kts` for every release (currently versionCode 3 / 0.2.0).
 
 ## Architecture in brief
 

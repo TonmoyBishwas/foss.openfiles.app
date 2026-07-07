@@ -34,6 +34,7 @@ class RecentAdapter(
         val item = items[position]
         holder.time.text = Format.relative(item.lastModified)
         holder.name.text = Format.middleEllipsis(item.name)
+        holder.thumb.tag = null // drop any stale in-flight thumbnail for this recycled view
         holder.thumb.setImageResource(R.drawable.ic_file_generic)
         holder.thumb.setColorFilter(0xFF8F9296.toInt())
         val kind = FileKind.of(item)

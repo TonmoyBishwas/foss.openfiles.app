@@ -87,8 +87,14 @@ class FileAdapter(
         }
 
         holder.itemView.setOnClickListener {
-            if (selectionMode) listener.onSelectionToggled(item)
-            else listener.onItemClick(item)
+            if (selectionMode) {
+                if (!selected.remove(item.path)) selected.add(item.path)
+                val pos = holder.bindingAdapterPosition
+                if (pos != RecyclerView.NO_POSITION) notifyItemChanged(pos)
+                listener.onSelectionToggled(item)
+            } else {
+                listener.onItemClick(item)
+            }
         }
         holder.itemView.setOnLongClickListener {
             listener.onItemLongClick(item)
@@ -126,6 +132,9 @@ class FileAdapter(
 
     private fun bindIcon(holder: Holder, item: FileItem, kind: FileKind) {
         val ctx = holder.itemView.context
+        // Invalidate any in-flight async thumbnail for the recycled view; without
+        // this a stale decode can land on a row now showing a different file.
+        holder.icon.tag = null
         holder.badge.visibility = View.GONE
         holder.icon.scaleType = ImageView.ScaleType.FIT_CENTER
         holder.icon.background = null
@@ -170,17 +179,9 @@ class FileAdapter(
                 Thumbs.load(holder.icon, item.path, kind, thumbPx)
             }
             FileKind.APK -> {
-                tint(null)
                 holder.icon.setImageResource(R.drawable.ic_file_generic)
-                holder.icon.imageTintList =
-                    android.content.res.ColorStateList.valueOf(0xFF6E7378.toInt())
-                Thumbs.cached(item.path, thumbPx)?.let {
-                    tint(null)
-                    holder.icon.setImageBitmap(it)
-                } ?: run {
-                    tint(null)
-                    Thumbs.load(holder.icon, item.path, kind, thumbPx)
-                }
+                tint(0xFF6E7378.toInt())
+                Thumbs.load(holder.icon, item.path, kind, thumbPx)
             }
             else -> {
                 holder.icon.setImageResource(iconFor(kind, item.extension))

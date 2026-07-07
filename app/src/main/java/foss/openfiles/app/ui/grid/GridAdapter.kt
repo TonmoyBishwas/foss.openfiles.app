@@ -33,7 +33,7 @@ class GridAdapter(
         val density = ctx.resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
-        val frame = FrameLayout(ctx)
+        val frame = SquareFrameLayout(ctx)
         frame.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         )
@@ -69,13 +69,16 @@ class GridAdapter(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply { gravity = Gravity.BOTTOM })
 
-        // Square tiles
-        frame.viewTreeObserver.addOnGlobalLayoutListener {
-            if (frame.width > 0 && frame.layoutParams.height != frame.width) {
-                frame.layoutParams = frame.layoutParams.apply { height = frame.width }
-            }
-        }
         return holder
+    }
+
+    /** Measures height equal to width — square tiles without layout listeners. */
+    private class SquareFrameLayout(ctx: android.content.Context) : FrameLayout(ctx) {
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val size = MeasureSpec.getSize(widthMeasureSpec)
+            val square = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
+            super.onMeasure(square, square)
+        }
     }
 
     override fun getItemCount(): Int = items.size
